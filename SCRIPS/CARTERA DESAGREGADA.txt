@@ -1,0 +1,85 @@
+/** Object:  StoredProcedure [dbo].[sp_Cartera_ImpuestoPredial_Actual_Consultar]    Script Date: 20/01/2023 10:04:38 **/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+	
+ALTER PROCEDURE [dbo].[sp_Cartera_ImpuestoPredial_Actual_Consultar]
+	@Ok INT
+AS
+BEGIN
+	
+	--DECLARE @TablaMostrar AS TABLE
+	--(
+	--  [NoPredio] VARCHAR(50),
+	--  [Vigencia]  VARCHAR(4),
+	--  [Avaluo] FLOAT,
+	--  [Concepto] VARCHAR(500),
+	--  [Nombre] VARCHAR(500),
+	--  [NoDocumento] VARCHAR(50),
+	--  [Impuesto] FLOAT,
+	--  [Intereses] FLOAT
+	--)
+
+	IF @Ok=0
+		BEGIN 
+			RETURN;
+		END
+		
+	--INSERT INTO @TablaMostrar
+	--		([NoPredio]
+	--		,[Vigencia]
+	--		,[Avaluo]
+	--		,[Concepto]
+	--		,[Nombre]
+	--		,[NoDocumento]
+	--		,[Impuesto]
+	--		,[Intereses])
+	  SELECT LP.NoPredio
+			,LP.Vigencia AS Vigencia
+			,LPD.Avaluo
+			,REPLACE(REPLACE(REPLACE(LOWER(C.Concepto),'vig',''),'actual',''),'anterior','') AS Concepto
+			,BAC.[Nombre]
+			,BAC.[NoDocumento]
+			,SUM(LPD.ValorCapital) AS Impuesto
+			,(LI.Intereses) AS Intereses
+	   FROM [dbo].[LiquidacionPredios] LP INNER JOIN
+			[dbo].[LiquidacionPrediosDetalle] LPD ON LP.NoLiquidacion=LPD.NoLiquidacion INNER JOIN 
+			[dbo].[Conceptos] C ON LPD.NoConcepto=C.NoConcepto INNER JOIN
+			[dbo].[DBAgustinCodazzi] BAC ON LP.NoPredio=BAC.NoPredio
+										AND BAC.[NoOrden]='001'
+			LEFT JOIN 
+			--[dbo].[LiquidacionPredios_Intereses] LI ON LPD.NoLiquidacion=LI.NoLiquidacion
+			[dbo].[LiquidacionPredios_Intereses_Detalle] LI ON LPD.NoLiquidacion=LI.NoLiquidacion
+														AND LPD.NoConcepto=LI.NoConcepto
+			LEFT JOIN
+	        [dbo].[MedicionInicial_TiposPredios] M ON LP.NoPredio=M.NoPredio
+			                                      AND M.[Tipo] IN ('EXE','EXC')
+	  WHERE LP.[Estado] IN (1,2)
+	    AND M.NoPredio IS NULL
+	  GROUP BY LP.NoPredio
+			  ,LP.Vigencia
+			  ,LPD.Avaluo
+			  ,REPLACE(REPLACE(REPLACE(LOWER(C.Concepto),'vig',''),'actual',''),'anterior','') 
+			  ,BAC.[Nombre]
+			  ,BAC.[NoDocumento]
+			  ,LI.Intereses
+			
+			
+	----BORRO LOS EXCLUIDOS Y EXCENTOS
+	--DELETE T
+	--FROM @TablaMostrar T INNER JOIN
+	--     [dbo].[MedicionInicial_TiposPredios] M ON T.NoPredio=M.NoPredio
+	--WHERE [Tipo] IN ('EXE','EXC')
+	
+	--SELECT [NoPredio]
+	--	  ,[Vigencia]
+	--	  ,[Avaluo]
+	--	  ,[Concepto]
+	--	  ,[Nombre]
+	--	  ,[NoDocumento]
+	--	  ,[Impuesto]
+	--	  ,[Intereses] 
+	--FROM @TablaMostrar
+
+END
